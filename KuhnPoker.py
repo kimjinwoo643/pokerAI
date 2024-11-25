@@ -10,7 +10,7 @@ class KuhnPoker:
         self.player_cards = []
         self.bet_sizes = [0, 0]  # Tracks the current bet size for each player
         self.max_bet = 2
-        self.stacks = [10, 10]  # Each player starts with 10 chips
+        self.stacks = [20, 20]  # Each player starts with 10 chips
 
     def deal_cards(self):
         random.shuffle(self.deck)
@@ -67,14 +67,9 @@ class KuhnPoker:
                 self.history = "check"
             else:
                 self.history += "-check"
-        elif action == "bet":
-            self.bet_sizes[self.current_player] += 1
-            self.pot += 1
-            self.stacks[self.current_player] -= 1
-            self.history += "-bet"
         elif action == "raise":
             self.pot += 1
-            self.bet_sizes[self.current_player] = 2
+            self.bet_sizes[self.current_player] += 1
             self.stacks[self.current_player] -= 1
             self.history += "-raise"
         elif action == "call":
