@@ -12,6 +12,53 @@ class KuhnPoker:
         self.max_bet = 2
         self.stacks = [20, 20]  # Each player starts with 10 chips
 
+    def get_state_vector(self):
+        """
+        Converts the current game state into a numerical vector representation.
+        """
+        # Encode player's card (one-hot encoding for simplicity)
+        card_encoding = [0, 0, 0]
+        card_encoding[self.player_cards[self.current_player] - 1] = 1
+
+        # Normalize stacks and bet sizes (optional, but helps with NN training)
+        normalized_stacks = [stack / 20 for stack in self.stacks]
+        normalized_bets = [bet / self.max_bet for bet in self.bet_sizes]
+
+        # Encode current player's turn (binary flag: 1 if current player, 0 otherwise)
+        current_player_flag = [1 if self.current_player == 0 else 0]
+
+        # Flatten and return the state vector
+        return (
+                card_encoding
+                + normalized_stacks
+                + normalized_bets
+                + current_player_flag
+        )
+
+    def step(self, action):
+        legal_actions = self.get_legal_actions()
+
+        self.play_action(action)
+
+        done = self.is_terminal()
+        reward = 0
+
+        if done:
+            # Game is over, calculate payoff
+            if "fold" in self.history:
+                winner = 1 - self.current_player
+                reward = self.pot if winner == self.current_player else -self.pot
+                self.stacks[winner] += self.pot
+            else:
+                winner = 0 if self.player_cards[0] > self.player_cards[1] else 1
+                reward = self.pot if winner == self.current_player else -self.pot
+                self.stacks[winner] += self.pot
+
+        # Get the new state vector
+        state = self.get_state_vector()
+
+        return state, reward, done
+
     def deal_cards(self):
         random.shuffle(self.deck)
         self.player_cards = [self.deck.pop(), self.deck.pop()]
