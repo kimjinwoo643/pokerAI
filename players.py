@@ -16,7 +16,18 @@ class RandomPlayer(Player):
         :param game_state: The current game state (for future strategy use, but not used here).
         :return: A randomly chosen action.
         """
+        # if "fold" in legal_actions:
+        #     legal_actions.remove("fold")
         return random.choice(legal_actions)
+class RaisePlayer(Player):
+    def choose_action(self, legal_actions, card, game_state):
+        if "raise" in legal_actions:
+            return "raise"
+        if "call" in legal_actions:
+            return "call"
+class FoldPlayer(Player):
+    def choose_action(self, legal_actions, card, game_state):
+        return "fold"
 class PassivePlayer(Player):
     def choose_action(self, legal_actions, card, game_state):
         if card == 1:

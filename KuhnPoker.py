@@ -11,6 +11,7 @@ class KuhnPoker:
         self.bet_sizes = [0, 0]  # Tracks the current bet size for each player
         self.max_bet = 2
         self.stacks = [20, 20]  # Each player starts with 10 chips
+        self.opponent_last_action = None
 
     def get_state_vector(self):
         """
@@ -24,8 +25,11 @@ class KuhnPoker:
         normalized_stacks = [stack / 20 for stack in self.stacks]
         normalized_bets = [bet / self.max_bet for bet in self.bet_sizes]
 
-        # Encode current player's turn (binary flag: 1 if current player, 0 otherwise)
+        action_space = ["check", "raise", "fold", "call"]
         current_player_flag = [1 if self.current_player == 0 else 0]
+        opponent_last_action_encoding = [0] * len(action_space)
+        if self.opponent_last_action in action_space:
+            opponent_last_action_encoding[action_space.index(self.opponent_last_action)] = 1
 
         # Flatten and return the state vector
         return (
@@ -33,6 +37,7 @@ class KuhnPoker:
                 + normalized_stacks
                 + normalized_bets
                 + current_player_flag
+                + opponent_last_action_encoding
         )
 
     def step(self, action):
@@ -46,7 +51,7 @@ class KuhnPoker:
         if done:
             # Game is over, calculate payoff
             if "fold" in self.history:
-                winner = 1 - self.current_player
+                winner = self.current_player
                 reward = self.pot if winner == self.current_player else -self.pot
                 self.stacks[winner] += self.pot
             else:
@@ -88,7 +93,7 @@ class KuhnPoker:
 
         if current_bet == 1:
             actions = ["check", "fold"]
-            if player_stack > 0:
+            if player_stack > 0 and opponent_stack > 0:
                 actions.append("raise")
             return actions
 
@@ -103,7 +108,7 @@ class KuhnPoker:
                 return ["fold"]
 
         # If the opponent has bet 2, the player can only call or fold
-        elif current_bet == 3:
+        elif max(self.bet_sizes) == 3:
             return ["call", "fold"]
 
         return []
@@ -116,7 +121,7 @@ class KuhnPoker:
                 self.history += "-check"
         elif action == "raise":
             self.pot += 1
-            self.bet_sizes[self.current_player] += 1
+            self.bet_sizes[self.current_player] += max(self.bet_sizes)
             self.stacks[self.current_player] -= 1
             self.history += "-raise"
         elif action == "call":
@@ -126,10 +131,11 @@ class KuhnPoker:
             self.history += "-call"
         elif action == "fold":
             self.history += "-fold"
+        self.opponent_last_action = action
         self.current_player = 1 - self.current_player
 
     def is_terminal(self):
-        return "fold" in self.history or self.bet_sizes == [2, 2] or self.history.endswith("check-check") or self.history.endswith("call")
+        return "fold" in self.history or self.bet_sizes == [3, 3] or self.history.endswith("check-check") or self.history.endswith("call")
 
     def get_payoff(self):
         if "fold" in self.history:
