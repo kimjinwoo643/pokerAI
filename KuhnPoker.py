@@ -30,14 +30,14 @@ class KuhnPoker:
         opponent_last_action_encoding = [0] * len(action_space)
         if self.opponent_last_action in action_space:
             opponent_last_action_encoding[action_space.index(self.opponent_last_action)] = 1
-
+        opponent_checked = [opponent_last_action_encoding[0]]
         # Flatten and return the state vector
         return (
                 card_encoding
                 + normalized_stacks
                 + normalized_bets
                 + current_player_flag
-                + opponent_last_action_encoding
+                + opponent_checked
         )
 
     def step(self, action):
