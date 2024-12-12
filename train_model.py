@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from DQN import DQN
+from DQN import DQN, EnhancedDQN
 import random
 import matplotlib.pyplot as plt  # Importing Matplotlib
 from KuhnPoker import KuhnPoker
@@ -23,8 +23,10 @@ batch_size = 128
 target_update_frequency = 10
 
 # Initialize the DQN and optimizer
-policy_net = DQN(input_dim, output_dim)
-target_net = DQN(input_dim, output_dim)
+# policy_net = DQN(input_dim, output_dim)
+# target_net = DQN(input_dim, output_dim)
+policy_net = EnhancedDQN(input_dim, output_dim)
+target_net = EnhancedDQN(input_dim, output_dim)
 target_net.load_state_dict(policy_net.state_dict())  # Sync the networks
 target_net.eval()  # Set target network to eval mode
 
@@ -89,6 +91,13 @@ def plot_loss():
     plt.legend()
     plt.show()
 
+# Update epsilon based on recent performance
+def update_epsilon(epsilon, recent_rewards, threshold=10, decay=0.995):
+    avg_reward = sum(recent_rewards[-threshold:]) / threshold
+    if avg_reward > 0:  # Encourage exploration only if recent performance is improving
+        epsilon *= decay
+    return max(epsilon, epsilon_min)
+
 
 # Main training loop
 # Main training loop
@@ -96,6 +105,7 @@ def train_model(opponent_classes, num_episodes=1000, hands_per_episode=29):
     global epsilon
     # Instantiate the AI player (DEEPQPlayer)
     ai_player = DEEPQPlayer(name="AI_Player", policy_net=policy_net, epsilon=epsilon)
+    recent_rewards = []
 
     for episode in range(num_episodes):
         # Randomly select an opponent class
@@ -143,7 +153,8 @@ def train_model(opponent_classes, num_episodes=1000, hands_per_episode=29):
         # Adjust the rewards for all transitions in the episode
         for i, (state, action_index, reward, next_state, done) in enumerate(episode_transitions):
             # Scale the reward by the episode's cumulative performance
-            adjusted_reward = cumulative_reward
+            adjusted_reward = reward + (env.stacks[0] - env.stacks[1]) / 10.0
+            # adjusted_reward = cumulative_reward
             store_transition(replay_buffer, (state, action_index, adjusted_reward, next_state, done))
 
         # Train the model after every episode
@@ -154,7 +165,9 @@ def train_model(opponent_classes, num_episodes=1000, hands_per_episode=29):
             update_target_network()
 
         # Reduce epsilon (exploration rate)
-        epsilon = max(epsilon * epsilon_decay, epsilon_min)
+        # epsilon = max(epsilon * epsilon_decay, epsilon_min)
+        recent_rewards.append(cumulative_reward)
+        epsilon = update_epsilon(epsilon, recent_rewards)
 
         if episode % 100 == 0:
             print(f"Episode {episode}, Epsilon {epsilon:.2f}, Cumulative Reward: {cumulative_reward:.2f}")

@@ -41,6 +41,13 @@ def evaluate_hyperparams(params, num_episodes=500, hands_per_episode=20):
     env = KuhnPoker()
 
     # Utility functions
+    # Update epsilon based on recent performance
+    def update_epsilon(epsilon, recent_rewards, threshold=10, decay=0.995):
+        avg_reward = sum(recent_rewards[-threshold:]) / threshold
+        if avg_reward > 0:  # Encourage exploration only if recent performance is improving
+            epsilon *= decay
+        return max(epsilon, epsilon_min)
+
     def store_transition(buffer, transition):
         buffer.append(transition)
         if len(buffer) > 10000:  # Replay buffer size
