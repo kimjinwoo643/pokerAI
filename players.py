@@ -121,8 +121,9 @@ class DEEPQPlayer:
         # Epsilon-greedy action selection
         if random.random() < self.epsilon:
             # Choose a random legal action
-            return random.choice(legal_actions)
-
+            action = random.choice(legal_actions)
+            return action
+        
         # Get Q-values from the policy network
         with torch.no_grad():
             q_values = self.policy_net(state_vector)
@@ -133,9 +134,11 @@ class DEEPQPlayer:
         legal_q_values = q_values[0, legal_action_indices]
 
         # Choose the action with the highest Q-value among legal actions
-        best_action_index = legal_action_indices[torch.argmax(legal_q_values).item()]
+        max_q_value = torch.max(legal_q_values).item()
+        best_actions = [i for i, q in enumerate(legal_q_values) if q.item() == max_q_value]
+        best_action_index = random.choice(best_actions)
 
-        return ["check", "raise", "fold", "call"][best_action_index]
+        return ["check", "raise", "fold", "call"][legal_action_indices[best_action_index]]
 
 
 

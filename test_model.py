@@ -2,20 +2,20 @@ import torch
 import random
 from KuhnPoker import KuhnPoker
 from players import RandomPlayer, DEEPQPlayer, PassivePlayer, HumanPlayer, RaisePlayer, ScaredPlayer, AggressivePlayer
-from DQN import DQN  # Import the DQN architecture
+from DQN import DQN, EnhancedDQN  # Import the DQN architecture
 
 input_dim = 9  # Adjust based on your state vector size
 output_dim = 4  # Actions: "check", "raise", "fold", "call"
 
 # Load the trained model
-policy_net = DQN(input_dim, output_dim)
-policy_net.load_state_dict(torch.load("PassivePlay.pth"))
+policy_net = EnhancedDQN(input_dim, output_dim)
+policy_net.load_state_dict(torch.load("88%_aggressive.pth"))
 policy_net.eval()  # Set to evaluation mode
 
 # Initialize the players
 ai_player = DEEPQPlayer(name="AI_Player", policy_net=policy_net, epsilon=0.0)  # No exploration during testing
 # players = [RaisePlayer(name="Player"), PassivePlayer(name="Player"), RandomPlayer(name="Player")]
-players = [AggressivePlayer(name="Player")]
+players = [PassivePlayer(name="Player")]
 
 env = KuhnPoker()
 
@@ -36,7 +36,7 @@ def play_game():
         # print(env.bet_sizes)
         # AI player chooses an action
         action = current_player.choose_action(legal_actions, card, state)
-        print(f"{current_player.name} chooses to {action}.")
+        # print(f"{current_player.name} chooses to {action}.")
 
         # Perform the action in the environment
         next_state, reward, done = env.step(action)
@@ -52,12 +52,12 @@ def evaluate_model(num_games=100):
     ai_chips = 0
     random_chips = 0
     for j in range(num_games):
-        for round_number in range(29):
-            print(f"\n--- Round {round_number} ---")
+        while True:
+            #print(f"\n--- Round {round_number} ---")
             play_game()
-            print(env.stacks[0], env.stacks[1])
-            print(f"AI card: {env.player_cards[0]}, Player: {env.player_cards[1]}")
-            print(f"Stacks after round: AI: {env.stacks[0]}, Player: {env.stacks[1]}")
+            #print(env.stacks[0], env.stacks[1])
+            #print(f"AI card: {env.player_cards[0]}, Player: {env.player_cards[1]}")
+            #print(f"Stacks after round: AI: {env.stacks[0]}, Player: {env.stacks[1]}")
             if env.stacks[0] <= 0 or env.stacks[1] <= 0:
                 break
         if env.stacks[0] > env.stacks[1]:
@@ -80,7 +80,7 @@ def evaluate_model(num_games=100):
     print(f"AI Chip Rate: {ai_chips/ (random_chips+ai_chips) * 100:.2f}%")
 
 if __name__ == "__main__":
-    evaluate_model(num_games=5000)  # Evaluate the model against a RandomPlayer
+    evaluate_model(num_games=500)  # Evaluate the model against a RandomPlayer
     # player_2 = RandomPlayer(name="Random Player")
     # evaluate_model(num_games=1000)
     # player_2 = RaisePlayer(name="Random Player")
