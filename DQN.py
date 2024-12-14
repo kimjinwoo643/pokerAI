@@ -15,13 +15,19 @@ class DQN(nn.Module):
 class EnhancedDQN(nn.Module):
     def __init__(self, input_dim, output_dim):
         super(EnhancedDQN, self).__init__()
-        self.fc1 = nn.Linear(input_dim, 64)  # Increased layer size
-        self.fc2 = nn.Linear(64, 128)
-        self.fc3 = nn.Linear(128, 64)
-        self.fc4 = nn.Linear(64, output_dim)  # Output layer
-
+        self.fc1 = nn.Linear(input_dim, 128)  # Increase first layer size
+        self.bn1 = nn.LayerNorm(128)         # Add Layer Normalization for stability
+        
+        self.fc2 = nn.Linear(128, 256)       # Increase intermediate layer size
+        self.bn2 = nn.LayerNorm(256)
+        
+        self.fc3 = nn.Linear(256, 128)       # Adjust layer sizes to match capacity
+        self.bn3 = nn.LayerNorm(128)
+        
+        self.fc4 = nn.Linear(128, output_dim)
+        
     def forward(self, x):
-        x = torch.relu(self.fc1(x))
-        x = torch.relu(self.fc2(x))
-        x = torch.relu(self.fc3(x))
-        return self.fc4(x)
+        x = torch.relu(self.bn1(self.fc1(x)))  # LayerNorm + ReLU
+        x = torch.relu(self.bn2(self.fc2(x)))  # LayerNorm + ReLU
+        x = torch.relu(self.bn3(self.fc3(x)))  # LayerNorm + ReLU
+        return self.fc4(x)  # Raw Q-values for each action

@@ -40,24 +40,36 @@ class KuhnPoker:
                 + opponent_checked
         )
 
-    def step(self, action):
-        legal_actions = self.get_legal_actions()
+    def step(self, action, perform_action=True):
+        prev_player = self.current_player
+        if perform_action:
+            legal_actions = self.get_legal_actions()
 
-        self.play_action(action)
+            if action not in legal_actions:
+                return self.get_state_vector(), 0, self.is_terminal()
+            
+            # Upon playing an action, the action gets added to the history and the player switches
+            self.play_action(action)
 
         done = self.is_terminal()
         reward = 0
 
         if done:
-            # Game is over, calculate payoff
+            # Game is over, calculate payoff (account for folding when having a higher card)
+            # Doesnt matter which player, since only AI player can use the reward
+            difference_in_cards = self.player_cards[self.current_player] - self.player_cards[1 - self.current_player]
             if "fold" in self.history:
                 winner = self.current_player
-                reward = self.pot if winner == self.current_player else -self.pot
-                self.stacks[winner] += self.pot
+                reward = self.bet_sizes[1 - prev_player] if winner == prev_player else -self.bet_sizes[prev_player]
+                # Increase reward when a good fold, decrease reward when a bad fold
+                reward += difference_in_cards if perform_action else 0
+                if perform_action:
+                    self.stacks[winner] += self.pot
             else:
                 winner = 0 if self.player_cards[0] > self.player_cards[1] else 1
-                reward = self.pot if winner == self.current_player else -self.pot
-                self.stacks[winner] += self.pot
+                reward = self.bet_sizes[1 - prev_player] if winner == prev_player else -self.bet_sizes[prev_player]
+                if perform_action:
+                    self.stacks[winner] += self.pot
 
         # Get the new state vector
         state = self.get_state_vector()

@@ -3,6 +3,7 @@ import torch.nn as nn
 import torch.optim as optim
 from DQN import DQN, EnhancedDQN
 import random
+import numpy as np
 import matplotlib.pyplot as plt  # Importing Matplotlib
 from KuhnPoker import KuhnPoker
 from players import (RandomPlayer, DEEPQPlayer, HumanPlayer, PassivePlayer,
@@ -14,17 +15,15 @@ losses = []
 input_dim = 9  # Adjust based on your state vector size
 output_dim = 4  # Actions: "check", "raise", "fold", "call"
 learning_rate = .0001
-gamma = 0.9  # Discount factor
-epsilon = 4.0  # Exploration rate
-epsilon_decay = 0.995
-epsilon_min = 0.17
-replay_buffer_size = 10000
+gamma = 0.97  # Discount factor
+epsilon = 1.0  # Exploration rate
+epsilon_decay = 0.999
+epsilon_min = 0.1
+replay_buffer_size = 50000
 batch_size = 128
 target_update_frequency = 10
 
 # Initialize the DQN and optimizer
-# policy_net = DQN(input_dim, output_dim)
-# target_net = DQN(input_dim, output_dim)
 policy_net = EnhancedDQN(input_dim, output_dim)
 target_net = EnhancedDQN(input_dim, output_dim)
 target_net.load_state_dict(policy_net.state_dict())  # Sync the networks
@@ -91,17 +90,10 @@ def plot_loss():
     plt.legend()
     plt.show()
 
-# Update epsilon based on recent performance
-def update_epsilon(epsilon, recent_rewards, threshold=10, decay=0.995):
-    avg_reward = sum(recent_rewards[-threshold:]) / threshold
-    if avg_reward > 0:  # Encourage exploration only if recent performance is improving
-        epsilon *= decay
-    return max(epsilon, epsilon_min)
-
 
 # Main training loop
 # Main training loop
-def train_model(opponent_classes, num_episodes=1000, hands_per_episode=29):
+def train_model(opponent_classes, num_episodes=1000, hands_per_episode=200):
     global epsilon
     # Instantiate the AI player (DEEPQPlayer)
     ai_player = DEEPQPlayer(name="AI_Player", policy_net=policy_net, epsilon=epsilon)
@@ -120,6 +112,7 @@ def train_model(opponent_classes, num_episodes=1000, hands_per_episode=29):
             env.deal_cards()
             done = False
             state = env.get_state_vector()
+            last_action = None
 
             while not done:
                 # Determine the current player
@@ -127,6 +120,7 @@ def train_model(opponent_classes, num_episodes=1000, hands_per_episode=29):
                 legal_actions = env.get_legal_actions()
                 card = env.player_cards[env.current_player]
 
+                last_action = env.opponent_last_action
                 action = current_player.choose_action(legal_actions, card, state)
 
                 # Perform the action in the environment
@@ -143,6 +137,15 @@ def train_model(opponent_classes, num_episodes=1000, hands_per_episode=29):
                 if isinstance(current_player, DEEPQPlayer):
                     cumulative_reward += reward
 
+            # At this point, done = True. Check edge case if Hardcoded Player Folded - Player 1 Turn, and append to DQN
+            if "fold" in env.history and env.current_player == 0 and last_action is not None and env.history.count("-") % 2 == 1:
+                # print("Edge case detected: verifying it's valid: ", env.history, env.current_player, env.player_cards)
+                next_state, reward, done = env.step(last_action, perform_action=False)
+                action_index = ["check", "raise", "fold", "call"].index(last_action)
+                episode_transitions.append((state, action_index, reward, next_state, done))
+                cumulative_reward += reward
+                    
+
             # print(f"AI card: {env.player_cards[0]}, Player: {env.player_cards[1]}")
             # print(f"Stacks after round: AI: {env.stacks[0]}, Player: {env.stacks[1]}")
             if env.stacks[0] <= 0 or env.stacks[1] <= 0:
@@ -153,8 +156,7 @@ def train_model(opponent_classes, num_episodes=1000, hands_per_episode=29):
         # Adjust the rewards for all transitions in the episode
         for i, (state, action_index, reward, next_state, done) in enumerate(episode_transitions):
             # Scale the reward by the episode's cumulative performance
-            adjusted_reward = reward + (env.stacks[0] - env.stacks[1]) / 10.0
-            # adjusted_reward = cumulative_reward
+            adjusted_reward = np.tanh(reward + (env.stacks[0] - env.stacks[1]) / 10.0)
             store_transition(replay_buffer, (state, action_index, adjusted_reward, next_state, done))
 
         # Train the model after every episode
@@ -165,18 +167,22 @@ def train_model(opponent_classes, num_episodes=1000, hands_per_episode=29):
             update_target_network()
 
         # Reduce epsilon (exploration rate)
-        # epsilon = max(epsilon * epsilon_decay, epsilon_min)
+        #epsilon = max(epsilon * epsilon_decay, epsilon_min)
+        avg_reward = sum(recent_rewards[-100:]) / 100
+        if avg_reward < 0:  # Struggling, encourage exploration
+            epsilon = min(1.0, epsilon * 1.01)
+        else:  # Winning, reduce exploration
+            epsilon = max(epsilon * epsilon_decay, epsilon_min)
         recent_rewards.append(cumulative_reward)
-        epsilon = update_epsilon(epsilon, recent_rewards)
 
         if episode % 100 == 0:
             print(f"Episode {episode}, Epsilon {epsilon:.2f}, Cumulative Reward: {cumulative_reward:.2f}")
 
     # Save the trained model after training
-    torch.save(policy_net.state_dict(), "passive.pth")
+    torch.save(policy_net.state_dict(), "balanced.pth")
     print("Model saved successfully!")
 
 if __name__ == "__main__":
     # Train against multiple types of players
-    train_model([AggressivePlayer], num_episodes=2500)
+    train_model([PassivePlayer, AggressivePlayer], num_episodes=5000)
     plot_loss()
