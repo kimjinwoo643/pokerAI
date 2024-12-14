@@ -167,13 +167,7 @@ def train_model(opponent_classes, num_episodes=1000, hands_per_episode=200):
             update_target_network()
 
         # Reduce epsilon (exploration rate)
-        #epsilon = max(epsilon * epsilon_decay, epsilon_min)
-        avg_reward = sum(recent_rewards[-100:]) / 100
-        if avg_reward < 0:  # Struggling, encourage exploration
-            epsilon = min(1.0, epsilon * 1.01)
-        else:  # Winning, reduce exploration
-            epsilon = max(epsilon * epsilon_decay, epsilon_min)
-        recent_rewards.append(cumulative_reward)
+        epsilon = max(epsilon * epsilon_decay, epsilon_min)
 
         if episode % 100 == 0:
             print(f"Episode {episode}, Epsilon {epsilon:.2f}, Cumulative Reward: {cumulative_reward:.2f}")
