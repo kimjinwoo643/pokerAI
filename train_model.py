@@ -14,12 +14,12 @@ losses = []
 # Parameters (must match the trained model)
 input_dim = 9  # Adjust based on your state vector size
 output_dim = 4  # Actions: "check", "raise", "fold", "call"
-learning_rate = .0001
-gamma = 0.97  # Discount factor
+learning_rate = .0005
+gamma = 0.99  # Discount factor  
 epsilon = 1.0  # Exploration rate
-epsilon_decay = 0.999
-epsilon_min = 0.1
-replay_buffer_size = 50000
+epsilon_decay = 0.99995
+epsilon_min = 0.15
+replay_buffer_size = 100000  
 batch_size = 128
 target_update_frequency = 10
 
@@ -97,7 +97,6 @@ def train_model(opponent_classes, num_episodes=1000, hands_per_episode=200):
     global epsilon
     # Instantiate the AI player (DEEPQPlayer)
     ai_player = DEEPQPlayer(name="AI_Player", policy_net=policy_net, epsilon=epsilon)
-    recent_rewards = []
 
     for episode in range(num_episodes):
         # Randomly select an opponent class
@@ -112,6 +111,7 @@ def train_model(opponent_classes, num_episodes=1000, hands_per_episode=200):
             env.deal_cards()
             done = False
             state = env.get_state_vector()
+
             last_action = None
 
             while not done:
@@ -156,8 +156,9 @@ def train_model(opponent_classes, num_episodes=1000, hands_per_episode=200):
         # Adjust the rewards for all transitions in the episode
         for i, (state, action_index, reward, next_state, done) in enumerate(episode_transitions):
             # Scale the reward by the episode's cumulative performance
-            adjusted_reward = np.tanh(reward + (env.stacks[0] - env.stacks[1]) / 10.0)
+            adjusted_reward = np.tanh(reward + 0.5 * (env.stacks[0] - env.stacks[1]))
             store_transition(replay_buffer, (state, action_index, adjusted_reward, next_state, done))
+            
 
         # Train the model after every episode
         train_dqn()
@@ -169,14 +170,16 @@ def train_model(opponent_classes, num_episodes=1000, hands_per_episode=200):
         # Reduce epsilon (exploration rate)
         epsilon = max(epsilon * epsilon_decay, epsilon_min)
 
-        if episode % 100 == 0:
-            print(f"Episode {episode}, Epsilon {epsilon:.2f}, Cumulative Reward: {cumulative_reward:.2f}")
+        # if episode % 100 == 0:
+        #     print(f"Episode {episode}, Epsilon {epsilon:.2f}, Cumulative Reward: {cumulative_reward:.2f}")
+        if episode % 500 == 0 and episode > 0:  # Reset exploration periodically
+            epsilon = 0.5 if epsilon > 0.5 else epsilon
 
     # Save the trained model after training
-    torch.save(policy_net.state_dict(), "balanced.pth")
+    torch.save(policy_net.state_dict(), "moderate_model5.pth")
     print("Model saved successfully!")
 
 if __name__ == "__main__":
     # Train against multiple types of players
-    train_model([PassivePlayer, AggressivePlayer], num_episodes=5000)
+    train_model([PassivePlayer, AggressivePlayer, RandomPlayer, ScaredPlayer], num_episodes=10000)
     plot_loss()

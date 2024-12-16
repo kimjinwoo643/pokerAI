@@ -9,13 +9,13 @@ output_dim = 4  # Actions: "check", "raise", "fold", "call"
 
 # Load the trained model
 policy_net = EnhancedDQN(input_dim, output_dim)
-policy_net.load_state_dict(torch.load("88%_aggressive.pth"))
+policy_net.load_state_dict(torch.load("66%_moderate.pth"))
 policy_net.eval()  # Set to evaluation mode
 
 # Initialize the players
 ai_player = DEEPQPlayer(name="AI_Player", policy_net=policy_net, epsilon=0.0)  # No exploration during testing
-# players = [RaisePlayer(name="Player"), PassivePlayer(name="Player"), RandomPlayer(name="Player")]
-players = [PassivePlayer(name="Player")]
+# players = [RaisePlayer(name="Player"), PassivePlayer(name="Player"), RandomPlayer(name="Player"), ScaredPlayer(name="Player")]
+players = [RaisePlayer(name="Player"), RandomPlayer(name="Player"),ScaredPlayer(name="Player"),PassivePlayer(name="Player")]
 
 env = KuhnPoker()
 
@@ -62,10 +62,8 @@ def evaluate_model(num_games=100):
                 break
         if env.stacks[0] > env.stacks[1]:
             ai_wins += 1
-            winner = "AI Player"
         elif env.stacks[1] > env.stacks[0]:
             random_wins += 1
-            winner = "Player 2"
         ai_chips += env.stacks[0]
         random_chips += env.stacks[1]
 

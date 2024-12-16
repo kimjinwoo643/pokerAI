@@ -26,6 +26,7 @@ class KuhnPoker:
         normalized_bets = [bet / self.max_bet for bet in self.bet_sizes]
 
         action_space = ["check", "raise", "fold", "call"]
+
         current_player_flag = [1 if self.current_player == 0 else 0]
         opponent_last_action_encoding = [0] * len(action_space)
         if self.opponent_last_action in action_space:
